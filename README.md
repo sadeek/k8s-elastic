@@ -2,3 +2,6 @@
 Elastic on kubernetes
 
 Deploy Elastic Search on Kubernets useing below steps, I'm deploying on Barematel server and using local-storage to create volume and storage policy
+
+
+Run setup-volumes-agent.sh on all nodes, it will create number of volume as specifed.
