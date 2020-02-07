@@ -23,27 +23,25 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: local-storage
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
 provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: local-provisioner-config
+  name: local-provisioner-config 
   namespace: local-storage
 data:
-  storageClassMap: |
+  storageClassMap: |     
     local-storage:
-       hostDir: /data/myelk
-       mountDir:  /data/myelk
+       hostDir: /elk-data
+       mountDir:  /elk-data
        blockCleanerCommand:
          - "/scripts/shred.sh"
-         - "2"
+         - "2" 
 ---
-apiVersion: apps/v1
+apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   name: local-volume-provisioner
@@ -53,7 +51,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: local-volume-provisioner
+      app: local-volume-provisioner 
   template:
     metadata:
       labels:
@@ -63,7 +61,7 @@ spec:
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.1.0"
           imagePullPolicy: "Always"
-          name: provisioner
+          name: provisioner 
           securityContext:
             privileged: true
           env:
@@ -72,19 +70,19 @@ spec:
               fieldRef:
                 fieldPath: spec.nodeName
           volumeMounts:
-            - mountPath: /etc/provisioner/config
+            - mountPath: /etc/provisioner/config 
               name: provisioner-config
-              readOnly: true
-            - mountPath:  /data/myelk
+              readOnly: true             
+            - mountPath:  /elk-data
               name: local-storage
-              mountPropagation: "HostToContainer"
+              mountPropagation: "HostToContainer" 
       volumes:
         - name: provisioner-config
           configMap:
-            name: local-provisioner-config
+            name: local-provisioner-config         
         - name: local-storage
           hostPath:
-            path: /data/myelk
+            path: /elk-data
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -114,7 +112,19 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["nodes"]
-  verbs: ["get"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get","list","watch","create","delete"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get","list","watch","update"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create","update","patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
